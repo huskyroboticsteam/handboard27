@@ -32,23 +32,27 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define HEARTBEAT_INTERVAL_MS 500
+
+/* Need to verify the timeout ms amount */
 #define CAN_TIMEOUT_MS        1000
 #define MOTOR_TIMEOUT_MS      500
 #define ACTUATOR_TIMEOUT_MS   500
 #define LIMIT_SWITCH_DEBOUNCE_MS 50
 
-#define PIN_DIR    GPIO_PIN_5
-#define DIR_OPEN GPIO_PIN_SET
-#define DIR_CLOSE GPIO_PIN_RESET
-#define STEPPER_PORT GPIOA
+#define PIN_DIR       GPIO_PIN_5
+#define DIR_OPEN      GPIO_PIN_SET
+#define DIR_CLOSE     GPIO_PIN_RESET
+#define STEPPER_PORT  GPIOA
 
 #define MOTOR_ENABLE_LEVEL  GPIO_PIN_SET
 #define MOTOR_DISABLE_LEVEL GPIO_PIN_RESET
 
 #define LIMIT_SWITCH_PRESSED GPIO_PIN_SET
 
-#define LASER_MAX_BRIGHTNESS 1023
 #define LASER_PERIPH_ID 0x01
+#define LASER_RED1_PIN  GPIO_PIN_3   /* Placeholder Pin Out */
+#define LASER_RED2_PIN  GPIO_PIN_4   /* Placeholder Pin Out */
+#define LASER_GREEN_PIN GPIO_PIN_5  /* Placeholder Pin Out */ 
 
 #define ACTUATOR_PERIPH_ID 0x02
 #define ACTUATOR_PIN_A     GPIO_PIN_6
@@ -122,6 +126,7 @@ void Send_LimitSwitch_Alert(void);
 void Motor_Disable(void);
 uint8_t Motor_Enable(void);
 void Laser_SetBrightness(uint16_t brightness);
+void Laser_On(void);
 void Laser_Off(void);
 void Actuator_Forward(void);
 void Actuator_Reverse(void);
@@ -261,8 +266,9 @@ int main(void)
 					CANPeripheralPacket_SetPWMDutyCycle_Decoded_t pwmPacket = CANPeripheralPacket_SetPWMDutyCycle_Decode(&rxPacket);
 					if(pwmPacket.peripheralID == LASER_PERIPH_ID) {
 						if (pwmPacket.dutyCycle > 0.0f) {
-							uint16_t brightness = (uint16_t)((pwmPacket.dutyCycle * LASER_MAX_BRIGHTNESS) / 100.0f);
-						    Laser_SetBrightness(brightness);
+							// uint16_t brightness = (uint16_t)((pwmPacket.dutyCycle * LASER_MAX_BRIGHTNESS) / 100.0f);
+						  //   Laser_SetBrightness(brightness);
+              Laser_On();
 						}
 						else {
 							Laser_Off();
@@ -326,7 +332,7 @@ int main(void)
 			}
 		}
 
-    /* USER CODE END WHILE */
+    /* USER CODE END WHILE */ 
 
     /* USER CODE BEGIN 3 */
   }
@@ -685,13 +691,16 @@ void Motor_Disable(void) {
     motor_enable_time = 0;
 }
 
-void Laser_SetBrightness(uint16_t brightness) {
-    if (brightness > LASER_MAX_BRIGHTNESS) brightness = LASER_MAX_BRIGHTNESS;
-    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3,brightness);
+void Laser_On(void) {
+  HAL_GPIO_WritePin(LASER_PORT, LASER_RED1_PIN, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(LASER_PORT, LASER_RED2_PIN, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(LASER_PORT, LASER_GREEN_PIN, GPIO_PIN_SET);
 }
 
 void Laser_Off(void) {
-    Laser_SetBrightness(0);
+    HAL_GPIO_WritePin(LASER_PORT, LASER_RED1_PIN, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(LASER_PORT, LASER_RED2_PIN, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(LASER_PORT, LASER_GREEN_PIN, GPIO_PIN_RESET);
 }
 
 void Actuator_Forward(void) {

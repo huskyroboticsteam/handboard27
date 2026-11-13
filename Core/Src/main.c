@@ -50,9 +50,10 @@
 #define LIMIT_SWITCH_PRESSED GPIO_PIN_SET
 
 #define LASER_PERIPH_ID 0x01
-#define LASER_RED1_PIN  GPIO_PIN_3   /* Placeholder Pin Out */
-#define LASER_RED2_PIN  GPIO_PIN_4   /* Placeholder Pin Out */
-#define LASER_GREEN_PIN GPIO_PIN_5  /* Placeholder Pin Out */ 
+#define LASER_RED1_PIN  GPIO_PIN_3    /* Placeholder Pin Out */
+#define LASER_RED2_PIN  GPIO_PIN_4    /* Placeholder Pin Out */
+#define LASER_GREEN_PIN GPIO_PIN_5    /* Placeholder Pin Out */ 
+#define LASER_PORT      GPIOA         /* Placeholder Port */
 
 #define ACTUATOR_PERIPH_ID 0x02
 #define ACTUATOR_PIN_A     GPIO_PIN_6

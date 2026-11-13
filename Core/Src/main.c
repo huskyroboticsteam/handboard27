@@ -32,6 +32,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define HEARTBEAT_INTERVAL_MS 500
+#define CAN_TIMEOUT_MS        1000
 #define MOTOR_TIMEOUT_MS      500
 #define ACTUATOR_TIMEOUT_MS   500
 #define LIMIT_SWITCH_DEBOUNCE_MS 50
@@ -94,6 +95,9 @@ CANPacket_t txPacket;
 
 uint32_t last_heartbeat_time = 0;
 uint32_t can_led_off_time = 0;
+
+uint32_t last_can_rx_time = 0;
+uint8_t can_timeout_active = 0;
 
 uint32_t motor_enable_time   = 0;
 uint8_t  motor_enabled       = 0;
@@ -198,6 +202,15 @@ int main(void)
 		  last_heartbeat_time = current_tick;
 	  }
 
+    if ((current_tick - last_can_rx_time) >= CAN_TIMEOUT_MS && !can_timeout_active) {
+      can_timeout_active = 1;
+      Motor_Disable();
+      Laser_Off();
+      Actuator_Brake();
+      actuator_active = 0;
+      actuator_enable_time = 0;
+    }
+
 	  if (motor_enabled && (current_tick - motor_enable_time) > MOTOR_TIMEOUT_MS) {
 		  Motor_Disable();
 	  }
@@ -223,10 +236,13 @@ int main(void)
 		  limit_triggered = 0;
 	  }
 
-	  if(CANPollAndReceive(CANHandle, &rxPacket)){
+	  if(CANPollAndReceive(CANHandle, &rxPacket)) {
 		  can_led_off_time = HAL_GetTick() + 20;
 		  HAL_GPIO_WritePin(GPIOB, CAN_LED_Pin, GPIO_PIN_RESET);
 
+      last_can_rx_time = HAL_GetTick();
+      can_timeout_active = 0;
+      
 		  uint8_t ackReq = rxPacket.command & 0x80;
 		  bool failure = 1;
 		  CANDevice_t sender = {

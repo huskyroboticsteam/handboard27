@@ -134,8 +134,10 @@ uint8_t Motor_Enable(void);
 void Laser_SetBrightness(uint16_t brightness);
 void Laser_On(void);
 void Laser_Off(void);
-void Actuator_Forward(void);
-void Actuator_Reverse(void);
+void Actuator1_Forward(void);
+void Actuator1_Reverse(void);
+void Actuator2_Forward(void);
+void Actuator2_Reverse(void);
 void Actuator_Off(void);
 void Actuator_Brake(void);
 /* USER CODE END PFP */

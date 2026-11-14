@@ -123,7 +123,6 @@ uint8_t actuator2_active       = 0;
 static uint8_t limit_triggered = 0;
 static uint32_t limit_debounce_time = 0;
 
-static volatile int32_t steps_remaining = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -650,6 +649,22 @@ void Motor_Disable(void) {
     HAL_GPIO_WritePin(GPIOB, DBG_LED_Pin, GPIO_PIN_SET);
     motor_enabled     = 0;
     motor_enable_time = 0;
+}
+
+void Stepper_On(int32_t steps) {
+    
+}
+
+void Stepper_Brake(void) {
+
+}
+
+void Stepper_Sleep(void) {
+
+}
+
+bool Stepper_Active(void) {
+    return true;
 }
 
 void Laser_On(void) {

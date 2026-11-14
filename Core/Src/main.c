@@ -146,7 +146,7 @@ void Actuator2_Reverse(void);
 void Actuator1_Off(void);
 void Actuator1_Brake(void);
 
-void Actuator2_OFF(void);
+void Actuator2_Off(void);
 void Actuator2_Brake(void);
 
 /* USER CODE END PFP */
@@ -281,6 +281,7 @@ int main(void)
 					txPacket = CANUniversalPacket_FirmwareVersion(thisCANDevice, sender, fwName, revision);
 					failure = CANSend(CANHandle, &txPacket);
 					break;
+
 		  	  case(CAN_COMMAND_ID__PWM_DUTY_CYCLE):
 					CANPeripheralPacket_SetPWMDutyCycle_Decoded_t pwmPacket = CANPeripheralPacket_SetPWMDutyCycle_Decode(&rxPacket);
 					if(pwmPacket.peripheralID == LASER_PERIPH_ID) {
@@ -295,14 +296,18 @@ int main(void)
 						failure = 0;
 					}
 					break;
+
 		  	  case(CAN_COMMAND_ID__E_STOP):
 		  			Motor_Disable();
-		  	  	  	Laser_Off();
-		  	  	  	Actuator_Brake();
-		  	  	  	actuator_active = 0;
-		  	  	  	actuator_enable_time = 0;
-		  	  	  	failure = 0;
-		  	  	  	break;
+            Laser_Off();
+            Actuator1_Brake();
+            Actuator2_Brake();
+            actuator1_active = 0;
+            actuator1_enable_time = 0;
+            actuator2_active = 0;
+            actuator2_enable_time = 0;
+            failure = 0;
+            break;
 
 		  	  case(CAN_COMMAND_ID__STEPPER_DRIVE_REVS):
 					CANMotorPacket_Stepper_DriveRevolutions_Decoded_t revs_decoded = CANMotorPacket_Stepper_DriveRevolutions_Decode(&rxPacket);

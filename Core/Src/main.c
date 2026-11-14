@@ -21,7 +21,6 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <stdbool.h>
 #include "../../Libraries/CAN26/CAN26.h"
 /* USER CODE END Includes */
 
@@ -142,7 +141,6 @@ uint8_t Motor_Enable(void);
 void Stepper_On(int32_t steps);
 void Stepper_Brake(void);
 void Stepper_Sleep(void);
-bool Stepper_Active(void);
 
 void Laser_On(void);
 void Laser_Off(void);
@@ -661,10 +659,6 @@ void Stepper_Brake(void) {
 
 void Stepper_Sleep(void) {
 
-}
-
-bool Stepper_Active(void) {
-    return true;
 }
 
 void Laser_On(void) {

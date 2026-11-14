@@ -183,9 +183,6 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   CANInit(CANHandle, &thisCANDevice);
-  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
-  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
-  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 512);
   HAL_GPIO_WritePin(STEPPER_PORT, STEPPER_NSLEEP_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(GPIOB, CAN_LED_Pin, GPIO_PIN_SET);
   Laser_Off();

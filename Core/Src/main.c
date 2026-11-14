@@ -110,8 +110,11 @@ uint8_t can_timeout_active = 0;
 uint32_t motor_enable_time   = 0;
 uint8_t  motor_enabled       = 0;
 
-uint32_t actuator_enable_time = 0;
-uint8_t  actuator_active      = 0;
+uint32_t actuator1_enable_time = 0;
+uint8_t  actuator1_active      = 0;
+
+uint32_t actuator2_enable_time = 0;
+uint8_t actuator2_active       = 0;
 
 static uint8_t limit_triggered = 0;
 static uint32_t limit_debounce_time = 0;
@@ -119,21 +122,33 @@ static uint32_t limit_debounce_time = 0;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+
 static void MX_GPIO_Init(void);
 static void MX_FDCAN2_Init(void);
 static void MX_TIM1_Init(void);
+
 /* USER CODE BEGIN PFP */
 void Send_Heartbeat(void);
 void Send_LimitSwitch_Alert(void);
+
 void Motor_Disable(void);
 uint8_t Motor_Enable(void);
-void Laser_SetBrightness(uint16_t brightness);
+
 void Laser_On(void);
 void Laser_Off(void);
-void Actuator_Forward(void);
-void Actuator_Reverse(void);
-void Actuator_Off(void);
-void Actuator_Brake(void);
+
+void Actuator1_Forward(void);
+void Actuator1_Reverse(void);
+
+void Actuator2_Forward(void);
+void Actuator2_Reverse(void);
+
+void Actuator1_Off(void);
+void Actuator1_Brake(void);
+
+void Actuator2_OFF(void);
+void Actuator2_Brake(void);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -145,7 +160,7 @@ void Actuator_Brake(void);
   * @brief  The application entry point.
   * @retval int
   */
-int main(void)
+int main(void) 
 {
 
   /* USER CODE BEGIN 1 */
@@ -178,7 +193,8 @@ int main(void)
   HAL_GPIO_WritePin(STEPPER_PORT, STEPPER_SLEEP_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(GPIOB, CAN_LED_Pin, GPIO_PIN_SET);
   Laser_Off();
-  Actuator_Off();
+  Actuator1_Off();
+  Actuator2_Off();
 
   last_heartbeat_time = HAL_GetTick();
 
@@ -217,10 +233,16 @@ int main(void)
 		  Motor_Disable();
 	  }
 
-	  if (actuator_active && (current_tick - actuator_enable_time) > ACTUATOR_TIMEOUT_MS) {
-		  Actuator_Brake();
-		  actuator_active = 0;
-		  actuator_enable_time = 0;
+	  if (actuator1_active && (current_tick - actuator1_enable_time) > ACTUATOR_TIMEOUT_MS) {
+		  Actuator1_Brake();
+		  actuator1_active = 0;
+		  actuator1_enable_time = 0;
+	  }
+
+    if (actuator2_active && (current_tick - actuator2_enable_time) > ACTUATOR_TIMEOUT_MS) {
+		  Actuator2_Brake();
+		  actuator2_active = 0;
+		  actuator2_enable_time = 0;
 	  }
 
 	  if (HAL_GPIO_ReadPin(LIMIT_SWITCH_PORT, LIMIT_SWITCH_PIN) == LIMIT_SWITCH_PRESSED) {
@@ -304,22 +326,37 @@ int main(void)
 					CANPeripheralPacket_SetLinearActuator_Decoded_t decoded =
 		                CANPeripheralPacket_SetLinearActuator_Decode(&rxPacket);
 
-		            if (decoded.peripheralID == ACTUATOR_PERIPH_ID) {
+		            if (decoded.peripheralID == ACTUATOR1_PERIPH_ID) {
 		                failure = 0;
 		            	if (decoded.drive > 0) {
-		                    Actuator_Forward();
-		                    actuator_active = 1;
-		                    actuator_enable_time = HAL_GetTick();
+		                    Actuator1_Forward();
+		                    actuator1_active = 1;
+		                    actuator1_enable_time = HAL_GetTick();
 		                } else if (decoded.drive < 0) {
-		                    Actuator_Reverse();
-		                    actuator_active = 1;
-		                    actuator_enable_time = HAL_GetTick();
+		                    Actuator1_Reverse();
+		                    actuator1_active = 1;
+		                    actuator1_enable_time = HAL_GetTick();
 		                } else {
-		                    Actuator_Brake();
-		                    actuator_active = 0;
-		                    actuator_enable_time = 0;
+		                    Actuator1_Brake();
+		                    actuator1_active = 0;
+		                    actuator1_enable_time = 0;
 		                }
-		            }
+                } else if (decoded.peripheralID == ACTUATOR2_PERIPH_ID) {
+                    failure = 0;
+                  if (decoded.drive > 0) {
+                        Actuator2_Forward();
+                        actuator2_active = 1;
+                        actuator2_enable_time = HAL_GetTick();
+                  } else if (decoded.drive < 0) {
+                        Actuator2_Reverse();
+                        actuator2_active = 1;
+                        actuator2_enable_time = HAL_GetTick();
+                  } else {
+                        Actuator2_Brake();
+                        actuator2_active = 0;
+                        actuator2_enable_time = 0;
+		              }
+                }
 		            break;
 		  }
 
@@ -631,12 +668,22 @@ void Actuator2_Reverse(void) {
     HAL_GPIO_WritePin(ACTUATOR2_PORT, ACTUATOR2_PIN_B, GPIO_PIN_SET);
 }
 
-void Actuator_Brake(void) {
+void Actuator1_Brake(void) {
+    HAL_GPIO_WritePin(ACTUATOR1_PORT, ACTUATOR1_PIN_A, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(ACTUATOR1_PORT, ACTUATOR1_PIN_B, GPIO_PIN_SET);
+}
+
+void Actuator1_Off(void) {
+    HAL_GPIO_WritePin(ACTUATOR1_PORT, ACTUATOR1_PIN_A, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(ACTUATOR1_PORT, ACTUATOR1_PIN_B, GPIO_PIN_RESET);
+}
+
+void Actuator2_Brake(void) {
     HAL_GPIO_WritePin(ACTUATOR2_PORT, ACTUATOR2_PIN_A, GPIO_PIN_SET);
     HAL_GPIO_WritePin(ACTUATOR2_PORT, ACTUATOR2_PIN_B, GPIO_PIN_SET);
 }
 
-void Actuator_Off(void) {
+void Actuator2_Off(void) {
     HAL_GPIO_WritePin(ACTUATOR2_PORT, ACTUATOR2_PIN_A, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(ACTUATOR2_PORT, ACTUATOR2_PIN_B, GPIO_PIN_RESET);
 }

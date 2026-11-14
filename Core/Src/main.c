@@ -140,9 +140,10 @@ void Send_LimitSwitch_Alert(void);
 void Motor_Disable(void);
 uint8_t Motor_Enable(void);
 
-void stepper_move(int32_t steps);
-void stepper_stop(void);
-bool stepper_is_busy(void);
+void Stepper_On(int32_t steps);
+void Stepper_Brake(void);
+void Stepper_Sleep(void);
+bool Stepper_Active(void);
 
 void Laser_On(void);
 void Laser_Off(void);

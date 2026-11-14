@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "../../Libraries/CAN26/CAN26.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -32,6 +32,9 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define HEARTBEAT_INTERVAL_MS 500
+
+#define STEP_TIM      htim1
+#define STEP_CHANNEL  TIM_CHANNEL_1
 
 /* Need to verify the timeout ms amount */
 #define CAN_TIMEOUT_MS        1000
@@ -118,6 +121,7 @@ uint8_t actuator2_active       = 0;
 
 static uint8_t limit_triggered = 0;
 static uint32_t limit_debounce_time = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -134,6 +138,10 @@ void Send_LimitSwitch_Alert(void);
 void Motor_Disable(void);
 uint8_t Motor_Enable(void);
 
+void Stepper_On(int32_t steps);
+void Stepper_Brake(void);
+void Stepper_Sleep(void);
+
 void Laser_On(void);
 void Laser_Off(void);
 
@@ -146,6 +154,7 @@ void Actuator2_Reverse(void);
 void Actuator1_Off(void);
 void Actuator1_Brake(void);
 
+void Actuator2_Off(void);
 void Actuator2_Off(void);
 void Actuator2_Brake(void);
 
@@ -281,6 +290,7 @@ int main(void)
 					txPacket = CANUniversalPacket_FirmwareVersion(thisCANDevice, sender, fwName, revision);
 					failure = CANSend(CANHandle, &txPacket);
 					break;
+
 
 		  	  case(CAN_COMMAND_ID__PWM_DUTY_CYCLE):
 					CANPeripheralPacket_SetPWMDutyCycle_Decoded_t pwmPacket = CANPeripheralPacket_SetPWMDutyCycle_Decode(&rxPacket);
@@ -639,6 +649,18 @@ void Motor_Disable(void) {
     HAL_GPIO_WritePin(GPIOB, DBG_LED_Pin, GPIO_PIN_SET);
     motor_enabled     = 0;
     motor_enable_time = 0;
+}
+
+void Stepper_On(int32_t steps) {
+    
+}
+
+void Stepper_Brake(void) {
+
+}
+
+void Stepper_Sleep(void) {
+
 }
 
 void Laser_On(void) {

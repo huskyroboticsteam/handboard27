@@ -33,19 +33,22 @@
 /* USER CODE BEGIN PD */
 #define HEARTBEAT_INTERVAL_MS 500
 
-#define STEP_TIM      htim1
+#define STEP_TIM      htim3
 #define STEP_CHANNEL  TIM_CHANNEL_1
+#define STEPPER_WAKE_DELAY_MS 2     // DRV8425 wakes in 1.2 ms max
+#define SLEEP_TIMEOUT_MS      1000
 
 /* Need to verify the timeout ms amount */
 #define CAN_TIMEOUT_MS        1000
-#define MOTOR_TIMEOUT_MS      500
 #define ACTUATOR_TIMEOUT_MS   500
 #define LIMIT_SWITCH_DEBOUNCE_MS 50
 
-#define PIN_DIR       GPIO_PIN_5
+#define PIN_DIR       STEPPER_DIR_Pin
 #define DIR_OPEN      GPIO_PIN_SET
 #define DIR_CLOSE     GPIO_PIN_RESET
 #define STEPPER_PORT  GPIOA
+#define STEPPER_NEABLE_Pin STEPPER_SLEEP_Pin  // placeholder, change if the enable pin is different
+#define STEPS_PER_REV 200  // placeholder: full steps per rev x microstep setting
 
 #define MOTOR_ENABLE_LEVEL  GPIO_PIN_SET
 #define MOTOR_DISABLE_LEVEL GPIO_PIN_RESET
@@ -129,6 +132,7 @@ uint8_t actuator2_active       = 0;
 
 static uint8_t limit_triggered = 0;
 static uint32_t limit_debounce_time = 0;
+static volatile uint32_t steps_remaining = 0;
 
 /* USER CODE END PV */
 
@@ -142,9 +146,6 @@ static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
 void Send_Heartbeat(void);
 void Send_LimitSwitch_Alert(void);
-
-void Motor_Disable(void);
-uint8_t Motor_Enable(void);
 
 void Stepper_On(int32_t steps);
 void Stepper_Brake(void);
@@ -249,17 +250,13 @@ int main(void)
 
     if ((current_tick - last_can_rx_time) >= CAN_TIMEOUT_MS && !can_timeout_active) {
       can_timeout_active = 1;
-      Motor_Disable();
+      Stepper_Sleep();
       Lasers_Off();
       Flaslight_Off();
       Actuator_Brake();
       actuator_active = 0;
       actuator_enable_time = 0;
     }
-
-	  if (motor_enabled && (current_tick - motor_enable_time) > MOTOR_TIMEOUT_MS) {
-		  Motor_Disable();
-	  }
 
 	  if (actuator1_active && (current_tick - actuator1_enable_time) > ACTUATOR_TIMEOUT_MS) {
 		  Actuator1_Brake();
@@ -279,7 +276,7 @@ int main(void)
 				  limit_debounce_time = current_tick;
 			  } else if ((current_tick - limit_debounce_time) >= LIMIT_SWITCH_DEBOUNCE_MS) {
 				  limit_triggered = 1;
-				  Motor_Disable();
+				  Stepper_Brake();
 				  Send_LimitSwitch_Alert();
 			  }
 		  }
@@ -333,7 +330,7 @@ int main(void)
 					break;
 
 		  	  case(CAN_COMMAND_ID__E_STOP):
-		  			Motor_Disable();
+		  			Stepper_Sleep();
             Lasers_Off();
             Actuator1_Brake();
             Actuator2_Brake();
@@ -347,17 +344,18 @@ int main(void)
 		  	  case(CAN_COMMAND_ID__STEPPER_DRIVE_REVS):
 					CANMotorPacket_Stepper_DriveRevolutions_Decoded_t revs_decoded = CANMotorPacket_Stepper_DriveRevolutions_Decode(&rxPacket);
 					if (revs_decoded.numRevolutions > 0.0f) {
-						HAL_GPIO_WritePin(STEPPER_PORT, PIN_DIR, DIR_OPEN);
-						failure = Motor_Enable();
+						Stepper_On((int32_t)(revs_decoded.numRevolutions * STEPS_PER_REV));
+						failure = 0;
 					} else if (revs_decoded.numRevolutions < 0.0f) {
 						if(limit_triggered) {
 							Send_LimitSwitch_Alert();
+							failure = 1;
+						} else {
+							Stepper_On((int32_t)(revs_decoded.numRevolutions * STEPS_PER_REV));
+							failure = 0;
 						}
-
-						HAL_GPIO_WritePin(STEPPER_PORT, PIN_DIR, DIR_CLOSE);
-						failure = Motor_Enable();
 					} else {
-						Motor_Disable();
+						Stepper_Sleep();
 						failure = 0;
 					}
 					break;
@@ -409,6 +407,11 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    if (steps_remaining > 0) {
+      motor_enable_time = HAL_GetTick();  // still stepping, keep the driver awake
+    } else if (motor_enabled && (HAL_GetTick() - motor_enable_time) > SLEEP_TIMEOUT_MS) {
+      Stepper_Sleep();
+    }
   }
   /* USER CODE END 3 */
 }
@@ -655,36 +658,51 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-uint8_t Motor_Enable(void) {
-	uint8_t direction = (GPIOA->ODR & PIN_DIR) ? GPIO_PIN_SET : GPIO_PIN_RESET;
-	if(!limit_triggered || (direction == DIR_OPEN)) { // Let the motor open hand even if limit switch is pressed
-    	HAL_GPIO_WritePin(STEPPER_PORT, STEPPER_NEABLE_Pin, MOTOR_ENABLE_LEVEL);
-    	HAL_GPIO_WritePin(GPIOB, DBG_LED_Pin, GPIO_PIN_RESET);
-        motor_enabled     = 1;
-        motor_enable_time = HAL_GetTick();
-    	return HAL_OK;
-    } else {
-    	return HAL_ERROR;
-    }
-}
-
-void Motor_Disable(void) {
-    HAL_GPIO_WritePin(STEPPER_PORT, STEPPER_NEABLE_Pin, MOTOR_DISABLE_LEVEL);
-    HAL_GPIO_WritePin(GPIOB, DBG_LED_Pin, GPIO_PIN_SET);
-    motor_enabled     = 0;
-    motor_enable_time = 0;
-}
-
 void Stepper_On(int32_t steps) {
-    
+  if (steps == 0) return;
+  GPIO_PinState direction = (steps > 0) ? DIR_OPEN : DIR_CLOSE;
+
+  if (limit_triggered && direction == DIR_CLOSE) return;
+
+  HAL_GPIO_WritePin(STEPPER_PORT, PIN_DIR, direction);
+
+  if (!motor_enabled) {               // wake the driver up if it is asleep
+    HAL_GPIO_WritePin(STEPPER_PORT, STEPPER_NEABLE_Pin, MOTOR_ENABLE_LEVEL);
+    HAL_GPIO_WritePin(GPIOB, DBG_LED_Pin, GPIO_PIN_RESET);
+    motor_enabled = 1;
+    HAL_Delay(STEPPER_WAKE_DELAY_MS);  // allow the driver to wake up
+  }
+  motor_enable_time = HAL_GetTick();        // reset the sleep timer
+
+  HAL_TIM_PWM_Stop(&STEP_TIM, STEP_CHANNEL);  // stop any previous pulses
+  steps_remaining = (steps > 0) ? steps : -steps;  // number of pulses to send
+  __HAL_TIM_SET_COUNTER(&STEP_TIM, 0);
+  __HAL_TIM_CLEAR_FLAG(&STEP_TIM, TIM_FLAG_UPDATE);  // clear before enabling the interrupt
+  __HAL_TIM_ENABLE_IT(&STEP_TIM, TIM_IT_UPDATE);
+  HAL_TIM_PWM_Start(&STEP_TIM, STEP_CHANNEL);
 }
 
 void Stepper_Brake(void) {
-
+  HAL_TIM_PWM_Stop(&STEP_TIM, STEP_CHANNEL);  // stop pulses, driver stays on and holds
+  __HAL_TIM_DISABLE_IT(&STEP_TIM, TIM_IT_UPDATE);
+  steps_remaining = 0;
 }
 
 void Stepper_Sleep(void) {
+  Stepper_Brake();
+  HAL_GPIO_WritePin(STEPPER_PORT, STEPPER_NEABLE_Pin, MOTOR_DISABLE_LEVEL);  // put driver to sleep
+  HAL_GPIO_WritePin(GPIOB, DBG_LED_Pin, GPIO_PIN_SET);
+  motor_enabled = 0;
+  motor_enable_time = 0;
+}
 
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+  if (htim == &STEP_TIM && steps_remaining > 0) {
+    steps_remaining--;
+    if (steps_remaining == 0) {
+      Stepper_Brake();  // all steps sent
+    }
+  }
 }
 
 void Lasers_On(void) {

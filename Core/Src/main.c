@@ -52,21 +52,29 @@
 
 #define LIMIT_SWITCH_PRESSED GPIO_PIN_SET
 
-#define LASER_PERIPH_ID 0x01
-#define LASER_RED1_PIN  GPIO_PIN_3    /* Placeholder Pin Out */
-#define LASER_RED2_PIN  GPIO_PIN_4    /* Placeholder Pin Out */
-#define LASER_GREEN_PIN GPIO_PIN_5    /* Placeholder Pin Out */ 
-#define LASER_PORT      GPIOA         /* Placeholder Port */
+#define LASERS_PERIPH_ID  0x01
+#define LASERS_PIN        GPIO_PIN_9
+#define LASERS_PORT       GPIOA         
 
 #define ACTUATOR1_PERIPH_ID 0x02
-#define ACTUATOR1_PIN_A     GPIO_PIN_6
-#define ACTUATOR1_PIN_B     GPIO_PIN_7
-#define ACTUATOR1_PORT      GPIOB
+#define ACTUATOR1_NSLEEP    GPIO_PIN_0
+#define ACTUATOR1_DISABLE   GPIO_PIN_1
+#define ACTUATOR1_PH        GPIO_PIN_2
+#define ACTUATOR1_EN        GPIO_PIN_3
+#define ACTUATOR1_NFAULT    GPIO_PIN_4
+#define ACTUATOR1_PORT      GPIOA
 
 #define ACTUATOR2_PERIPH_ID 0x03
-#define ACTUATOR2_PIN_A     GPIO_PIN_8
-#define ACTUATOR2_PIN_B     GPIO_PIN_9
-#define ACTUATOR2_PORT      GPIOB
+#define ACTUATOR2_NSLEEP    GPIO_PIN_13
+#define ACTUATOR2_DISABLE   GPIO_PIN_0
+#define ACTUATOR2_PH        GPIO_PIN_1
+#define ACTUATOR2_EN        GPIO_PIN_2
+#define ACTUATOR2_NFAULT    GPIO_PIN_3
+#define ACTUATOR2_PORT      GPIOC
+
+#define FLASLIGHT_PERIPH_ID 0x04
+#define FLASLIGHT_PIN       GPIO_PIN_8
+#define FLASLIGHT_PORT      GPIOA
 
 #define LIMIT_SWITCH_PIN  GPIO_PIN_1
 #define LIMIT_SWITCH_PORT GPIOA
@@ -142,14 +150,23 @@ void Stepper_On(int32_t steps);
 void Stepper_Brake(void);
 void Stepper_Sleep(void);
 
-void Laser_On(void);
-void Laser_Off(void);
+void Lasers_On(void);
+void Lasers_Off(void);
+
+void Flaslight_On(void);
+void Flaslight_Off(void);
 
 void Actuator1_Forward(void);
 void Actuator1_Reverse(void);
+void Actuator1_On();
+void Actuator1_Brake(void);
+void Actuator1_Sleep(void);
 
 void Actuator2_Forward(void);
 void Actuator2_Reverse(void);
+void Actuator2_On();
+void Actuator2_Brake(void);
+void Actuator2_Sleep(void);
 
 void Actuator1_Off(void);
 void Actuator1_Brake(void);
@@ -201,7 +218,8 @@ int main(void)
   CANInit(CANHandle, &thisCANDevice);
   HAL_GPIO_WritePin(STEPPER_PORT, STEPPER_SLEEP_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(GPIOB, CAN_LED_Pin, GPIO_PIN_SET);
-  Laser_Off();
+  Lasers_Off();
+  Flaslight_Off();
   Actuator1_Off();
   Actuator2_Off();
 
@@ -232,7 +250,8 @@ int main(void)
     if ((current_tick - last_can_rx_time) >= CAN_TIMEOUT_MS && !can_timeout_active) {
       can_timeout_active = 1;
       Motor_Disable();
-      Laser_Off();
+      Lasers_Off();
+      Flaslight_Off();
       Actuator_Brake();
       actuator_active = 0;
       actuator_enable_time = 0;
@@ -294,22 +313,28 @@ int main(void)
 
 		  	  case(CAN_COMMAND_ID__PWM_DUTY_CYCLE):
 					CANPeripheralPacket_SetPWMDutyCycle_Decoded_t pwmPacket = CANPeripheralPacket_SetPWMDutyCycle_Decode(&rxPacket);
-					if(pwmPacket.peripheralID == LASER_PERIPH_ID) {
+					if(pwmPacket.peripheralID == LASERS_PERIPH_ID) {
 						if (pwmPacket.dutyCycle > 0.0f) {
-							// uint16_t brightness = (uint16_t)((pwmPacket.dutyCycle * LASER_MAX_BRIGHTNESS) / 100.0f);
-						  //   Laser_SetBrightness(brightness);
-              Laser_On();
+              Lasers_On();
 						}
 						else {
-							Laser_Off();
+							Lasers_Off();
 						}
 						failure = 0;
-					}
+					} else if(pwmPacket.peripheralID == FLASLIGHT_PERIPH_ID) {
+            if (pwmPacket.dutyCycle > 0.0f) {
+              Flaslight_On();
+						}
+						else {
+							Flaslight_Off();
+						}
+						failure = 0;
+          }
 					break;
 
 		  	  case(CAN_COMMAND_ID__E_STOP):
 		  			Motor_Disable();
-            Laser_Off();
+            Lasers_Off();
             Actuator1_Brake();
             Actuator2_Brake();
             actuator1_active = 0;
@@ -577,8 +602,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0|LASER_RED1_Pin|LASER_RED2_Pin|LASER_GREEN_Pin
-                          |STEPPER_DIR_Pin|STEPPER_SLEEP_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0|LASERS_PIN|STEPPER_DIR_Pin|STEPPER_SLEEP_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0|GPIO_PIN_1|DBG_LED_Pin|ERR_LED_Pin
@@ -593,9 +617,9 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PA0 LASER_RED1_Pin LASER_RED2_Pin LASER_GREEN_Pin
+  /*Configure GPIO pins : PA0 LASERS_PIN
                            STEPPER_DIR_Pin STEPPER_SLEEP_Pin */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|LASER_RED1_Pin|LASER_RED2_Pin|LASER_GREEN_Pin
+  GPIO_InitStruct.Pin = GPIO_PIN_0|LASERS_PIN
                           |STEPPER_DIR_Pin|STEPPER_SLEEP_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -663,16 +687,20 @@ void Stepper_Sleep(void) {
 
 }
 
-void Laser_On(void) {
-  HAL_GPIO_WritePin(LASER_PORT, LASER_RED1_PIN, GPIO_PIN_SET);
-  HAL_GPIO_WritePin(LASER_PORT, LASER_RED2_PIN, GPIO_PIN_SET);
-  HAL_GPIO_WritePin(LASER_PORT, LASER_GREEN_PIN, GPIO_PIN_SET);
+void Lasers_On(void) {
+  HAL_GPIO_WritePin(LASERS_PORT, LASERS_PIN, GPIO_PIN_SET);
 }
 
-void Laser_Off(void) {
-    HAL_GPIO_WritePin(LASER_PORT, LASER_RED1_PIN, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(LASER_PORT, LASER_RED2_PIN, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(LASER_PORT, LASER_GREEN_PIN, GPIO_PIN_RESET);
+void Lasers_Off(void) {
+    HAL_GPIO_WritePin(LASERS_PORT, LASERS_PIN, GPIO_PIN_RESET);
+}
+
+void Flaslight_On(void) {
+    HAL_GPIO_WritePin(FLASLIGHT_PORT, FLASLIGHT_PIN, GPIO_PIN_SET);
+}
+
+void Flaslight_Off(void) {
+    HAL_GPIO_WritePin(FLASLIGHT_PORT, FLASLIGHT_PIN, GPIO_PIN_RESET);
 }
 
 void Actuator1_Forward(void) {

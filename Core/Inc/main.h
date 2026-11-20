@@ -49,8 +49,6 @@ extern "C" {
 
 /* USER CODE END EM */
 
-void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
-
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
 
@@ -59,18 +57,48 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define LASER_RED1_Pin GPIO_PIN_3
-#define LASER_RED1_GPIO_Port GPIOA
-#define LASER_RED2_Pin GPIO_PIN_4
-#define LASER_RED2_GPIO_Port GPIOA
-#define LASER_GREEN_Pin GPIO_PIN_5
-#define LASER_GREEN_GPIO_Port GPIOA
+#define H1_NSLEEP_Pin GPIO_PIN_13
+#define H1_NSLEEP_GPIO_Port GPIOC
+#define H1_DISABLE_Pin GPIO_PIN_0
+#define H1_DISABLE_GPIO_Port GPIOC
+#define H1_PH_Pin GPIO_PIN_1
+#define H1_PH_GPIO_Port GPIOC
+#define H1_EN_Pin GPIO_PIN_2
+#define H1_EN_GPIO_Port GPIOC
+#define H1_NFAULT_Pin GPIO_PIN_3
+#define H1_NFAULT_GPIO_Port GPIOC
+#define H2_NSLEEP_Pin GPIO_PIN_0
+#define H2_NSLEEP_GPIO_Port GPIOA
+#define H2_DISABLE_Pin GPIO_PIN_1
+#define H2_DISABLE_GPIO_Port GPIOA
+#define H2_PH_Pin GPIO_PIN_2
+#define H2_PH_GPIO_Port GPIOA
+#define H2_EN_Pin GPIO_PIN_3
+#define H2_EN_GPIO_Port GPIOA
+#define H2_NFAULT_Pin GPIO_PIN_4
+#define H2_NFAULT_GPIO_Port GPIOA
+#define STEPPER_SLEEP_Pin GPIO_PIN_5
+#define STEPPER_SLEEP_GPIO_Port GPIOA
+#define STEPPER_EN_Pin GPIO_PIN_6
+#define STEPPER_EN_GPIO_Port GPIOA
+#define STEPPER_DIR_Pin GPIO_PIN_7
+#define STEPPER_DIR_GPIO_Port GPIOA
+#define STEPPER_STEP_Pin GPIO_PIN_4
+#define STEPPER_STEP_GPIO_Port GPIOC
+#define STEPPER_M1_Pin GPIO_PIN_5
+#define STEPPER_M1_GPIO_Port GPIOC
+#define STEPPER_M0_Pin GPIO_PIN_1
+#define STEPPER_M0_GPIO_Port GPIOB
+#define STEPPER_FAULT_Pin GPIO_PIN_2
+#define STEPPER_FAULT_GPIO_Port GPIOB
 #define CAN_LED_Pin GPIO_PIN_11
 #define CAN_LED_GPIO_Port GPIOB
-#define STEPPER_DIR_Pin GPIO_PIN_9
-#define STEPPER_DIR_GPIO_Port GPIOA
-#define STEPPER_SLEEP_Pin GPIO_PIN_10
-#define STEPPER_SLEEP_GPIO_Port GPIOA
+#define FMOSFET_Pin GPIO_PIN_8
+#define FMOSFET_GPIO_Port GPIOA
+#define LMOSFET_Pin GPIO_PIN_9
+#define LMOSFET_GPIO_Port GPIOA
+#define LIMIT_SWITCH_Pin GPIO_PIN_12
+#define LIMIT_SWITCH_GPIO_Port GPIOA
 #define DBG_LED_Pin GPIO_PIN_4
 #define DBG_LED_GPIO_Port GPIOB
 #define ERR_LED_Pin GPIO_PIN_5
